@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: memu-backend
+  jackson:
+    default-property-inclusion: non_null
+
+memu:
+  kernel:
+    # Python AI 内核地址
+    base-url: http://127.0.0.1:8765
+  cors:
+    # 放行 Tauri 前端 dev server
+    origins:
+      - http://localhost:1420
+      - http://127.0.0.1:1420
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.memu: INFO
+    org.springframework.web: INFO
