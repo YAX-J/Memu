@@ -36,6 +36,11 @@ class Settings:
     cloud_api_key: str | None = _s("MEMU_CLOUD_API_KEY", "") or None
     cloud_model: str = _s("MEMU_CLOUD_MODEL", "qwen-plus")
 
+    # ---- 嵌入（相似度缓存 + 混合检索）----
+    # 装 sentence-transformers 后设 MEMU_EMBEDDING_MODEL 切换语义向量；
+    # 未装则自动回落零依赖字符 n-gram 哈希。
+    embedding_model: str = _s("MEMU_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+
     # ---- 主动引擎（公式见 docs/DESIGN.md 第 5 节）----
     suggest_threshold: float = _f("MEMU_SUGGEST_THRESHOLD", 0.60)
     dismiss_mute_count: int = _i("MEMU_DISMISS_MUTE_COUNT", 3)

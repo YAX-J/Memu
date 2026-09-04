@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-LLMUsed = Literal["local", "cloud", "cache", "failed"]
+LLMUsed = Literal["local", "cloud", "cache", "rules", "failed"]
 FeedbackAction = Literal["accepted", "snoozed", "dismissed"]
 
 
@@ -27,7 +27,8 @@ class IngestRequest(BaseModel):
     type: str = "note"
     occurredAt: datetime | None = None
     rawText: str
-    meta: dict[str, Any] = Field(default_factory=dict)
+    # Java 侧 WebClient 默认会发 null，可选字段必须容忍 null（否则 422）
+    meta: dict[str, Any] | None = Field(default=None)
 
 
 class EntityOut(BaseModel):

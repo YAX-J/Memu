@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 
 from config import settings
 from engine import feedback as feedback_engine
+from engine import retrieval
 from engine.suggester import build_suggestions
 from extract.extractor import extract
 from graph import repo
@@ -83,19 +84,11 @@ async def ingest(req: IngestRequest) -> IngestResponse:
 
 @router.post("/kernel/retrieve", response_model=RetrieveResponse)
 def retrieve(req: RetrieveRequest) -> RetrieveResponse:
-    """P0 为关键词匹配；P1 换成 embedding 向量检索 + 图谱扩散。"""
+    """混合检索：embedding 向量召回 + 图谱扩散相邻实体。"""
     conn = get_connection()
-    rows = repo.search_events_by_text(conn, req.query, req.topK)
+    results = retrieval.vector_search(conn, req.query, req.topK)
     return RetrieveResponse(
-        results=[
-            RetrieveResult(
-                nodeId=r[0],
-                type=r[1] or "Event",
-                score=1.0,  # P0 无排序分数，P1 用向量相似度替换
-                snippet=(r[2] or "")[:200],
-            )
-            for r in rows
-        ]
+        results=[RetrieveResult(**r) for r in results]
     )
 
 
@@ -118,8 +111,8 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
     res = feedback_engine.apply_feedback(conn, req.habitId, req.action, req.at or now())
     if res is None:
         raise HTTPException(status_code=404, detail=f"未找到习惯: {req.habitId}")
-    new_confidence, muted = res
-    return FeedbackResponse(ok=True, patternMuted=muted, newWeight=round(new_confidence, 3))
+    new_feedback_score, muted = res
+    return FeedbackResponse(ok=True, patternMuted=muted, newWeight=round(new_feedback_score, 3))
 
 
 @router.get("/kernel/graph/subgraph")
@@ -154,5 +147,15 @@ def subgraph(center: str | None = None, depth: int = 2) -> dict:
         edges.append({"source": src, "target": dst, "type": "RELATES_TO"})
         if not any(n["id"] == dst for n in nodes):
             nodes.append({"id": dst, "type": "Topic", "label": name, "source": None, "at": None})
+
+    # 人 → 事件 的参与边 + Person 节点
+    for eid, pid, pname in repo.list_event_person_edges(conn):
+        key = f"{pid}->{eid}"
+        if key in seen:
+            continue
+        seen.add(key)
+        edges.append({"source": pid, "target": eid, "type": "PARTICIPATES_IN"})
+        if not any(n["id"] == pid for n in nodes):
+            nodes.append({"id": pid, "type": "Person", "label": pname, "source": None, "at": None})
 
     return {"nodes": nodes, "edges": edges}

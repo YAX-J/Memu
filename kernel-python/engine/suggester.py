@@ -6,6 +6,7 @@ from datetime import datetime
 
 import kuzu
 
+from domain import PERIOD_WORDS
 from graph import repo
 from util import stable_id
 
@@ -30,9 +31,9 @@ def build_suggestions(conn: kuzu.Connection, now: datetime) -> list[dict]:
     return [
         {
             "id": h["id"],
-            "title": f"又到{h['period']}期了，要不要处理「{h['topic']}」？",
+            "title": f"又到处理「{h['topic']}」的时候了吗？",
             "reason": (
-                f"你近 {h['count']} 次都以约 {h['period']} 为周期处理它"
+                f"你近 {h['count']} 次大约{PERIOD_WORDS.get(h['period'], h['period'])}处理它一次"
                 f"（稳定性 {h['consistency']}），预测下次在 {h['nextAt']:%m-%d %H:%M}"
             ),
             "confidence": h["confidence"],

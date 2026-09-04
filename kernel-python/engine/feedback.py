@@ -20,7 +20,11 @@ def apply_feedback(
     conn: kuzu.Connection, habit_id: str, action: str, now: datetime
 ) -> tuple[float, bool] | None:
     """
-    返回 (new_confidence, muted)；习惯不存在时返回 None。
+    返回 (new_feedback_score, muted)；习惯不存在时返回 None。
+
+    EWMA 作用在独立的 feedbackScore 字段上（设计 5.2），而非 confidence：
+    confidence 是每次规律扫描时由 consistency/freq/recency + feedbackScore
+    现算的，不能存长期反馈状态，否则下次 refresh 会被统计分覆盖、权重回流失效。
 
     action 语义：
       accepted  —— 采纳：加权，清零忽略计数，解除静默
@@ -33,7 +37,7 @@ def apply_feedback(
 
     reward = FEEDBACK_REWARD.get(action, 0.0)
     alpha = settings.feedback_alpha
-    new_conf = (1 - alpha) * habit.confidence + alpha * reward
+    new_feedback_score = (1 - alpha) * habit.feedbackScore + alpha * reward
 
     streak = habit.dismissStreak
     muted = habit.muted
@@ -48,5 +52,5 @@ def apply_feedback(
     else:  # snoozed
         streak = 0
 
-    repo.update_habit_feedback(conn, habit_id, new_conf, muted, streak, now)
-    return new_conf, muted
+    repo.update_habit_feedback(conn, habit_id, new_feedback_score, muted, streak, now)
+    return new_feedback_score, muted

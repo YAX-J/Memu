@@ -1,15 +1,21 @@
 package com.memu.event;
 
-import com.memu.common.Result;
-import com.memu.event.dto.IngestRequest;
-import com.memu.event.dto.IngestResponse;
-import com.memu.event.dto.RetrieveResponse;
-import com.memu.event.dto.Subgraph;
+import java.util.Map;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.memu.kernel.dto.IngestDtos;
+import com.memu.kernel.dto.RetrieveDtos;
+
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.*;
 
 /**
- * 事件采集与检索入口。
+ * 事件采集与检索入口。返回体直接给前端，不再套 Result 包装。
  */
 @RestController
 @RequestMapping("/api")
@@ -21,20 +27,23 @@ public class EventController {
         this.svc = svc;
     }
 
+    /** 采集事件入口。eventId 由 Java 生成，调用方无需关心。 */
     @PostMapping("/events")
-    public Result<IngestResponse> ingest(@Valid @RequestBody IngestRequest req) {
-        return Result.ok(svc.ingest(req));
+    public IngestDtos.IngestResponse ingest(@Valid @RequestBody EventPayload payload) {
+        return svc.ingest(payload);
     }
 
     @GetMapping("/retrieve")
-    public Result<RetrieveResponse> retrieve(
+    public RetrieveDtos.RetrieveResponse retrieve(
             @RequestParam String q,
             @RequestParam(defaultValue = "10") int topK) {
-        return Result.ok(svc.retrieve(q, topK));
+        return svc.retrieve(q, topK);
     }
 
     @GetMapping("/graph/subgraph")
-    public Result<Subgraph> subgraph(@RequestParam(defaultValue = "2") int depth) {
-        return Result.ok(svc.subgraph(depth));
+    public Map<String, Object> subgraph(
+            @RequestParam(required = false) String center,
+            @RequestParam(defaultValue = "2") int depth) {
+        return svc.subgraph(center, depth);
     }
 }

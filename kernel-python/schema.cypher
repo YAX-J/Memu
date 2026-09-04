@@ -63,6 +63,7 @@ CREATE NODE TABLE IF NOT EXISTS Habit(
     pattern       STRING,
     period        STRING,
     confidence    DOUBLE,
+    feedbackScore DOUBLE,
     nextAt        TIMESTAMP,
     muted         BOOLEAN,
     dismissStreak INT64,

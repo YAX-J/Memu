@@ -22,3 +22,10 @@ PERIOD_BOUNDS: tuple[tuple[str, float], ...] = (
     ("周", 10 * PERIOD_DAY),
     ("月", 45 * PERIOD_DAY),
 )
+
+# 周期标签 → 自然语言（用于建议文案，避免「又到日期了」这类拼接歧义）
+PERIOD_WORDS: dict[str, str] = {
+    "日": "每天",
+    "周": "每周",
+    "月": "每月",
+}

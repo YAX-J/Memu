@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { ingestEvent } from "../api/client";
 
 interface EventItem {
   id: string;
@@ -11,6 +12,8 @@ interface EventItem {
 const events = ref<EventItem[]>([]);
 const query = ref("");
 const loading = ref(false);
+const draft = ref("");
+const saving = ref(false);
 
 async function search() {
   if (!query.value.trim()) return;
@@ -22,6 +25,19 @@ async function search() {
     events.value = (await r.json()).results ?? [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function record() {
+  const text = draft.value.trim();
+  if (!text) return;
+  saving.value = true;
+  try {
+    await ingestEvent(text);
+    draft.value = "";
+    search();
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -37,6 +53,14 @@ onMounted(() => {
     <div class="search">
       <input v-model="query" @keyup.enter="search" placeholder="输入关键词，如：张三 版本评审" />
       <button class="primary" :disabled="loading" @click="search">搜索</button>
+    </div>
+    <div class="record">
+      <input
+        v-model="draft"
+        @keyup.enter="record"
+        placeholder="手动记录一条，如：李雷 参加周会"
+      />
+      <button class="primary" :disabled="saving || !draft.trim()" @click="record">记录</button>
     </div>
     <ul class="list">
       <li v-for="e in events" :key="e.id">
@@ -61,6 +85,11 @@ h2 {
   font-weight: 500;
 }
 .search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.record {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;

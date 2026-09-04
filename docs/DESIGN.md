@@ -37,16 +37,20 @@ memu/
 │  └─ src/                       # Vue 3 前端：建议卡片流 / 时间线 / 图谱可视化 / 设置
 ├─ backend-java/                 # Spring Boot 3 业务后端
 │  └─ src/main/java/com/memu/
-│     ├─ event/                  # 事件总线（采集入口 → 内核）
-│     ├─ suggestion/             # 建议生命周期（生成/推送/采纳/忽略/静默）
-│     ├─ feedback/               # 反馈闭环与权重回流
-│     └─ integration/            # 日历 / 邮件等外部集成
+│     ├─ kernel/                 # 调内核的唯一出口 KernelClient + 契约 DTO（kernel/dto）
+│     ├─ event/                  # 事件采集入口（EventPayload → 内核）
+│     ├─ suggestion/             # 建议领域模型 + 生命周期 + 定时调度 + WebSocket 推送
+│     ├─ feedback/               # 反馈入口（suggestionId → habitId 回传内核）
+│     ├─ integration/            # 日历 / 邮件等外部集成（接口 + 占位实现）
+│     └─ config/                 # WebClient / CORS / WebSocket / 配置绑定
 ├─ kernel-python/                # FastAPI AI 内核
-│  ├─ main.py                    # API 入口（4 个契约接口）
-│  ├─ schema.cypher              # 图谱 DDL
-│  ├─ graph/                     # Kùzu 读写封装
+│  ├─ main.py                    # 应用装配（lifespan 建库）
+│  ├─ api/                       # 路由 + 契约 schemas
+│  ├─ engine/                    # 主动引擎：规律学习 / 建议生成 / 反馈闭环
 │  ├─ extract/                   # 实体/关系抽取（Ollama + 云端兜底）
-│  ├─ engine/                    # 主动引擎：规律学习 / 偏好建模 / 触发
+│  ├─ graph/                     # Kùzu 读写封装（所有 Cypher 收口于此）
+│  ├─ config.py / domain.py / util.py
+│  ├─ schema.cypher              # 图谱 DDL
 │  └─ requirements.txt
 └─ docs/
    └─ DESIGN.md
@@ -66,7 +70,7 @@ memu/
 | `Topic` | `id, name` | 主题 / 兴趣 |
 | `Event` | `id, type, source, rawText, occurredAt` | 原始事件（一切的输入） |
 | `Preference` | `id, key, value, weight` | 偏好，带权重 |
-| `Habit` | `id, pattern, period, confidence` | 习惯（规律学习产出） |
+| `Habit` | `id, pattern, period, confidence, feedbackScore, nextAt, muted, dismissStreak` | 习惯（规律学习产出） |
 
 所有节点统一带 `createdAt / updatedAt / confidence`，支持时间切片查询。
 
@@ -88,6 +92,11 @@ memu/
 ## 4. Java ↔ Python 接口契约
 
 统一前缀 `http://127.0.0.1:8765`，JSON。
+
+> **两层契约**：Tauri/前端调 Java 的 REST API（`/api/*`，端口 8080）；
+> Java 再调 Python 内核（`/kernel/*`，端口 8765）。本节只定义 Java↔Python 这一层。
+> Java 暴露给前端的接口：`POST /api/events`、`GET /api/retrieve?q=`、`GET /api/suggestions`、
+> `POST /api/suggestions/refresh`、`POST /api/feedback`、`GET /api/graph/subgraph`、`GET /api/health`。
 
 ### 4.1 事件入图 `POST /kernel/ingest`
 
@@ -125,10 +134,15 @@ memu/
 
 ### 4.4 反馈回流 `POST /kernel/feedback`
 
+内核侧反馈以 **habitId** 定位习惯（habitId 即 4.3 返回的 `Suggestion.id`）：
+
 ```jsonc
-// request { "suggestionId": "s-77", "action": "dismissed", "at": "..." }
+// request { "habitId": "h-77", "action": "dismissed", "at": "..." }
 // response { "ok": true, "patternMuted": false, "newWeight": 0.58 }
 ```
+
+> 前端/Tauri 调的是 Java 的 `POST /api/feedback`，字段是 `suggestionId`（Java 侧建议实例 UUID）。
+> Java 内部用 `suggestionId` 查出 `habitId` 再回传内核 —— **建议实例与用户动作由 Java 保存，习惯权重由内核维护**，两边职责不重叠。
 
 ---
 

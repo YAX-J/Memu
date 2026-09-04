@@ -3,15 +3,26 @@
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 from datetime import datetime, timezone
+
+
+def _normalize(s: str) -> str:
+    """实体名归一化：全角→半角（NFKC）+ 去空白 + 小写。
+
+    让「张 伟」「张伟」「张　伟」「ZHANG WEI」等写法映射到同一节点，
+    这是实体消歧里最廉价、可离线做的那一层（别名/指代消解留给 LLM）。
+    """
+    s = unicodedata.normalize("NFKC", s)
+    return "".join(s.split()).lower()
 
 
 def stable_id(*parts: str) -> str:
     """
     由内容生成稳定 ID，保证同名实体幂等落图。
-    大小写与首尾空格不敏感，避免"张三"/"张三 "产生两个节点。
+    大小写、全/半角、首尾及内部空白均不敏感，避免「张三」/「张三 」产生两个节点。
     """
-    raw = "|".join(p.strip().lower() for p in parts if p and p.strip())
+    raw = "|".join(_normalize(p) for p in parts if p.strip())
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
