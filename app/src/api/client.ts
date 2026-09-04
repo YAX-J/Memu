@@ -50,6 +50,21 @@ export async function refreshSuggestions(): Promise<SuggestResponse> {
   return jsonOrThrow(await fetch(`${BASE}/api/suggestions/refresh`, { method: "POST" }));
 }
 
+// 手动记录一条事件（剪贴板自动采集由 Rust 侧 Collector 负责，这里供 UI 手动录入）
+export async function ingestEvent(
+  rawText: string,
+  source = "manual",
+  type = "note"
+): Promise<void> {
+  await jsonOrThrow(
+    await fetch(`${BASE}/api/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source, type, rawText }),
+    })
+  );
+}
+
 export async function sendFeedback(
   suggestionId: string,
   action: "accepted" | "snoozed" | "dismissed"
