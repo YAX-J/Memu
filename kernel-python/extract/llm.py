@@ -47,6 +47,15 @@ async def call_ollama(prompt: str) -> str:
         return resp.json()["response"]
 
 
+def _extract_cloud_content(data: dict) -> str:
+    """兼容两类响应：DashScope 原生（output.choices）与 OpenAI 兼容（choices）。"""
+    choices = data.get("output", {}).get("choices") or data.get("choices")
+    if not choices:
+        return ""
+    message = choices[0].get("message", {}) or {}
+    return message.get("content", "")
+
+
 async def call_cloud(prompt: str) -> str:
     if not settings.cloud_url or not settings.cloud_api_key:
         raise LLMUnavailable("云端兜底未配置（MEMU_CLOUD_URL / MEMU_CLOUD_API_KEY 为空）")
@@ -60,8 +69,10 @@ async def call_cloud(prompt: str) -> str:
             },
         )
         resp.raise_for_status()
-        data = resp.json()
-        return data["output"]["choices"][0]["message"]["content"]
+        content = _extract_cloud_content(resp.json())
+        if not content:
+            raise LLMUnavailable("云端返回为空或格式不识别")
+        return content
 
 
 def parse_extraction(raw: str) -> tuple[list[dict], list[dict]]:

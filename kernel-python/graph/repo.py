@@ -19,6 +19,7 @@ class HabitRow(NamedTuple):
     pattern: str
     period: str
     confidence: float
+    feedbackScore: float
     nextAt: datetime | None
     muted: bool
     dismissStreak: int
@@ -98,7 +99,8 @@ def upsert_habit(conn: kuzu.Connection, habit: dict[str, Any], now: datetime) ->
     conn.execute(
         "MERGE (h:Habit {id: $id}) "
         "ON CREATE SET h.pattern = $pattern, h.period = $period, "
-        "h.confidence = $confidence, h.nextAt = $nextAt, h.muted = false, "
+        "h.confidence = $confidence, h.feedbackScore = $feedbackScore, "
+        "h.nextAt = $nextAt, h.muted = false, "
         "h.dismissStreak = 0, h.createdAt = $now, h.updatedAt = $now "
         "ON MATCH SET h.confidence = $confidence, h.nextAt = $nextAt, h.updatedAt = $now",
         {
@@ -106,6 +108,7 @@ def upsert_habit(conn: kuzu.Connection, habit: dict[str, Any], now: datetime) ->
             "pattern": habit["pattern"],
             "period": habit["period"],
             "confidence": habit["confidence"],
+            "feedbackScore": habit["feedbackScore"],
             "nextAt": habit["nextAt"],
             "now": now,
         },
@@ -116,15 +119,15 @@ def upsert_habit(conn: kuzu.Connection, habit: dict[str, Any], now: datetime) ->
 def update_habit_feedback(
     conn: kuzu.Connection,
     habit_id: str,
-    confidence: float,
+    feedback_score: float,
     muted: bool,
     streak: int,
     now: datetime,
 ) -> None:
     conn.execute(
         "MATCH (h:Habit {id: $id}) "
-        "SET h.confidence = $conf, h.muted = $muted, h.dismissStreak = $streak, h.updatedAt = $now",
-        {"id": habit_id, "conf": confidence, "muted": muted, "streak": streak, "now": now},
+        "SET h.feedbackScore = $feedbackScore, h.muted = $muted, h.dismissStreak = $streak, h.updatedAt = $now",
+        {"id": habit_id, "feedbackScore": feedback_score, "muted": muted, "streak": streak, "now": now},
     )
 
 
@@ -147,7 +150,7 @@ def iter_event_topic_groups(conn: kuzu.Connection) -> Iterator[tuple[str, str, l
 def get_habit(conn: kuzu.Connection, habit_id: str) -> HabitRow | None:
     rows = conn.execute(
         "MATCH (h:Habit {id: $id}) "
-        "RETURN h.id, h.pattern, h.period, h.confidence, h.nextAt, h.muted, h.dismissStreak",
+        "RETURN h.id, h.pattern, h.period, h.confidence, h.feedbackScore, h.nextAt, h.muted, h.dismissStreak",
         {"id": habit_id},
     )
     if not rows.has_next():
@@ -158,9 +161,10 @@ def get_habit(conn: kuzu.Connection, habit_id: str) -> HabitRow | None:
         pattern=r[1] or "",
         period=r[2] or "",
         confidence=float(r[3] or 0.0),
-        nextAt=r[4],
-        muted=bool(r[5]),
-        dismissStreak=int(r[6] or 0),
+        feedbackScore=float(r[4] if r[4] is not None else 0.5),
+        nextAt=r[5],
+        muted=bool(r[6]),
+        dismissStreak=int(r[7] or 0),
     )
 
 
@@ -169,6 +173,18 @@ def list_recent_events(conn: kuzu.Connection, limit: int) -> list[tuple]:
         "MATCH (e:Event) RETURN e.id, e.type, e.rawText, e.source, e.occurredAt "
         "ORDER BY e.occurredAt DESC LIMIT $limit",
         {"limit": limit},
+    )
+    out = []
+    while rows.has_next():
+        out.append(tuple(rows.get_next()))
+    return out
+
+
+def list_all_events(conn: kuzu.Connection) -> list[tuple]:
+    """全量事件 (id, type, rawText, occurredAt)，供向量检索遍历。"""
+    rows = conn.execute(
+        "MATCH (e:Event) RETURN e.id, e.type, e.rawText, e.occurredAt "
+        "ORDER BY e.occurredAt DESC"
     )
     out = []
     while rows.has_next():
@@ -186,12 +202,10 @@ def list_event_topic_edges(conn: kuzu.Connection) -> list[tuple]:
     return out
 
 
-def search_events_by_text(conn: kuzu.Connection, keyword: str, top_k: int) -> list[tuple]:
+def list_event_person_edges(conn: kuzu.Connection) -> list[tuple]:
+    """人 → 事件 的参与边，返回 (event_id, person_id, person_name)。"""
     rows = conn.execute(
-        "MATCH (e:Event) WHERE e.rawText LIKE $kw "
-        "RETURN e.id, e.type, e.rawText, e.occurredAt "
-        "ORDER BY e.occurredAt DESC LIMIT $topK",
-        {"kw": f"%{keyword}%", "topK": top_k},
+        "MATCH (p:Person)-[:PARTICIPATES_IN]->(e:Event) RETURN e.id, p.id, p.name"
     )
     out = []
     while rows.has_next():

@@ -6,4 +6,4 @@ pydantic>=2.7
 numpy>=1.26
 
 # 本地嵌入（P1 混合检索启用；首次运行会下载模型，约 100-400MB）
-# sentence-transformers>=3.0
+sentence-transformers>=3.0
