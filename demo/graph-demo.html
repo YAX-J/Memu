@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memu 知识图谱</title>
+<style>
+  :root { --bg:#ffffff; --panel:#ffffff; --border:#e5e7eb; --text:#1f2328; --muted:#6b7280; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f6f8; color:var(--text); font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:24px 16px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin:0 0 16px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .legend { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; font-size:13px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  svg { width:100%; height:auto; display:block; }
+  line { stroke:#e5e7eb; stroke-width:1.2; }
+  line.participates_in { stroke:#4f6ef7; stroke-opacity:.35; }
+  text { font-size:11px; fill:#1f2328; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Memu 知识图谱</h1>
+  <p class="sub">真实数据 · 24 节点 / 32 边 · 力导向布局</p>
+  <div class="card">
+    <div class="legend">
+      <span><i class="dot" style="background:#4f6ef7"></i>人 Person</span>
+      <span><i class="dot" style="background:#e0a800"></i>主题 Topic</span>
+      <span><i class="dot" style="background:#8a94a6"></i>事件 Event</span>
+      <span>— 蓝虚线：参与 · 灰实线：关联</span>
+    </div>
+    <svg id="g" viewBox="0 0 960 620"></svg>
+  </div>
+</div>
+<script>
+const nodes = [{"id": "2ed5556e-2d64-4e9a-8aa6-c73ccb4b81bc", "type": "meeting", "label": "张伟 参加晨会", "source": "manual", "at": "2026-09-04T01:00:00"}, {"id": "f661115b-58c9-44e8-8319-e9596f2e3f64", "type": "meeting", "label": "李雷 参加周会", "source": "manual", "at": "2026-09-04T01:00:00"}, {"id": "f08544d3-b641-4da1-a65f-f965ae639034", "type": "note", "label": "韩梅梅 周末去健身", "source": "manual", "at": "2026-09-04T01:00:00"}, {"id": "dcaaf800-4f7b-4ee5-bbad-a0e6170f2a74", "type": "note", "label": "王芳 参加代码评审", "source": "manual", "at": "2026-09-04T01:00:00"}, {"id": "45cb951e-59cc-4810-af44-6a992a460bee", "type": "meeting", "label": "张伟 参加晨会", "source": "manual", "at": "2026-09-03T01:00:00"}, {"id": "30c6ba1e-dc63-47d8-9cbc-f98a60030ed3", "type": "meeting", "label": "李雷 参加周会", "source": "manual", "at": "2026-09-03T01:00:00"}, {"id": "cd9f8725-549d-46e1-8848-7a659b9c515f", "type": "note", "label": "韩梅梅 周末去健身", "source": "manual", "at": "2026-09-03T01:00:00"}, {"id": "913f7070-6efa-4577-91ed-37b0a08386a5", "type": "note", "label": "王芳 参加代码评审", "source": "manual", "at": "2026-09-03T01:00:00"}, {"id": "e377b7d8-519e-4d0a-8223-798a9f943d1c", "type": "meeting", "label": "张伟 参加晨会", "source": "manual", "at": "2026-09-02T01:00:00"}, {"id": "ed3226c2-22ea-4433-a0e7-d0d51f48d3fd", "type": "meeting", "label": "李雷 参加周会", "source": "manual", "at": "2026-09-02T01:00:00"}, {"id": "8dd188bd-ebe8-4396-9932-2f78a8959996", "type": "note", "label": "韩梅梅 周末去健身", "source": "manual", "at": "2026-09-02T01:00:00"}, {"id": "1d82a055-0d1a-4d6f-9f12-b4848af54cc4", "type": "note", "label": "王芳 参加代码评审", "source": "manual", "at": "2026-09-02T01:00:00"}, {"id": "a701ece6-9279-4643-a041-6c29d1bc9651", "type": "meeting", "label": "张伟 参加晨会", "source": "manual", "at": "2026-09-01T01:00:00"}, {"id": "31230a9e-4fb6-4bf2-80b2-9dc837f603e5", "type": "meeting", "label": "李雷 参加周会", "source": "manual", "at": "2026-09-01T01:00:00"}, {"id": "3607b953-dc0f-4760-b6d3-75197c64c2ed", "type": "note", "label": "韩梅梅 周末去健身", "source": "manual", "at": "2026-09-01T01:00:00"}, {"id": "01f397cc-03a2-4cc4-86e0-04d9486fe385", "type": "note", "label": "王芳 参加代码评审", "source": "manual", "at": "2026-09-01T01:00:00"}, {"id": "c5a7a84ed1f2f013", "type": "Topic", "label": "晨会"}, {"id": "906b86eb71df1f30", "type": "Topic", "label": "周会"}, {"id": "3e14ab3b19fc24d6", "type": "Topic", "label": "健身"}, {"id": "868f98af170da888", "type": "Topic", "label": "代码评审"}, {"id": "ea7e6fdbda8cfde8", "type": "Person", "label": "张伟"}, {"id": "b0009265a44eefb2", "type": "Person", "label": "李雷"}, {"id": "4592e5344ceaa6a3", "type": "Person", "label": "韩梅梅"}, {"id": "afb17b77fed18fd6", "type": "Person", "label": "王芳"}];
+const edges = [{"source": "a701ece6-9279-4643-a041-6c29d1bc9651", "target": "c5a7a84ed1f2f013", "type": "RELATES_TO"}, {"source": "e377b7d8-519e-4d0a-8223-798a9f943d1c", "target": "c5a7a84ed1f2f013", "type": "RELATES_TO"}, {"source": "45cb951e-59cc-4810-af44-6a992a460bee", "target": "c5a7a84ed1f2f013", "type": "RELATES_TO"}, {"source": "2ed5556e-2d64-4e9a-8aa6-c73ccb4b81bc", "target": "c5a7a84ed1f2f013", "type": "RELATES_TO"}, {"source": "31230a9e-4fb6-4bf2-80b2-9dc837f603e5", "target": "906b86eb71df1f30", "type": "RELATES_TO"}, {"source": "ed3226c2-22ea-4433-a0e7-d0d51f48d3fd", "target": "906b86eb71df1f30", "type": "RELATES_TO"}, {"source": "30c6ba1e-dc63-47d8-9cbc-f98a60030ed3", "target": "906b86eb71df1f30", "type": "RELATES_TO"}, {"source": "f661115b-58c9-44e8-8319-e9596f2e3f64", "target": "906b86eb71df1f30", "type": "RELATES_TO"}, {"source": "3607b953-dc0f-4760-b6d3-75197c64c2ed", "target": "3e14ab3b19fc24d6", "type": "RELATES_TO"}, {"source": "8dd188bd-ebe8-4396-9932-2f78a8959996", "target": "3e14ab3b19fc24d6", "type": "RELATES_TO"}, {"source": "cd9f8725-549d-46e1-8848-7a659b9c515f", "target": "3e14ab3b19fc24d6", "type": "RELATES_TO"}, {"source": "f08544d3-b641-4da1-a65f-f965ae639034", "target": "3e14ab3b19fc24d6", "type": "RELATES_TO"}, {"source": "01f397cc-03a2-4cc4-86e0-04d9486fe385", "target": "868f98af170da888", "type": "RELATES_TO"}, {"source": "1d82a055-0d1a-4d6f-9f12-b4848af54cc4", "target": "868f98af170da888", "type": "RELATES_TO"}, {"source": "913f7070-6efa-4577-91ed-37b0a08386a5", "target": "868f98af170da888", "type": "RELATES_TO"}, {"source": "dcaaf800-4f7b-4ee5-bbad-a0e6170f2a74", "target": "868f98af170da888", "type": "RELATES_TO"}, {"source": "ea7e6fdbda8cfde8", "target": "a701ece6-9279-4643-a041-6c29d1bc9651", "type": "PARTICIPATES_IN"}, {"source": "b0009265a44eefb2", "target": "31230a9e-4fb6-4bf2-80b2-9dc837f603e5", "type": "PARTICIPATES_IN"}, {"source": "4592e5344ceaa6a3", "target": "3607b953-dc0f-4760-b6d3-75197c64c2ed", "type": "PARTICIPATES_IN"}, {"source": "afb17b77fed18fd6", "target": "01f397cc-03a2-4cc4-86e0-04d9486fe385", "type": "PARTICIPATES_IN"}, {"source": "ea7e6fdbda8cfde8", "target": "e377b7d8-519e-4d0a-8223-798a9f943d1c", "type": "PARTICIPATES_IN"}, {"source": "b0009265a44eefb2", "target": "ed3226c2-22ea-4433-a0e7-d0d51f48d3fd", "type": "PARTICIPATES_IN"}, {"source": "4592e5344ceaa6a3", "target": "8dd188bd-ebe8-4396-9932-2f78a8959996", "type": "PARTICIPATES_IN"}, {"source": "afb17b77fed18fd6", "target": "1d82a055-0d1a-4d6f-9f12-b4848af54cc4", "type": "PARTICIPATES_IN"}, {"source": "ea7e6fdbda8cfde8", "target": "45cb951e-59cc-4810-af44-6a992a460bee", "type": "PARTICIPATES_IN"}, {"source": "b0009265a44eefb2", "target": "30c6ba1e-dc63-47d8-9cbc-f98a60030ed3", "type": "PARTICIPATES_IN"}, {"source": "4592e5344ceaa6a3", "target": "cd9f8725-549d-46e1-8848-7a659b9c515f", "type": "PARTICIPATES_IN"}, {"source": "afb17b77fed18fd6", "target": "913f7070-6efa-4577-91ed-37b0a08386a5", "type": "PARTICIPATES_IN"}, {"source": "ea7e6fdbda8cfde8", "target": "2ed5556e-2d64-4e9a-8aa6-c73ccb4b81bc", "type": "PARTICIPATES_IN"}, {"source": "b0009265a44eefb2", "target": "f661115b-58c9-44e8-8319-e9596f2e3f64", "type": "PARTICIPATES_IN"}, {"source": "4592e5344ceaa6a3", "target": "f08544d3-b641-4da1-a65f-f965ae639034", "type": "PARTICIPATES_IN"}, {"source": "afb17b77fed18fd6", "target": "dcaaf800-4f7b-4ee5-bbad-a0e6170f2a74", "type": "PARTICIPATES_IN"}];
+const W = 960, H = 620;
+
+function layout(nodes, edges, W, H) {
+  const byId = {};
+  nodes.forEach(n => { n.x = W/2 + (Math.random()-0.5)*W*0.5; n.y = H/2 + (Math.random()-0.5)*H*0.5; byId[n.id] = n; });
+  const links = edges.map(e => ({ a: byId[e.source], b: byId[e.target] })).filter(l => l.a && l.b);
+  const rest = 85, maxIter = 500;
+  for (let it = 0; it < maxIter; it++) {
+    const t = 1 - it / maxIter;            // 冷却
+    const rep = 9000 * t;                  // 斥力随温度衰减
+    // 斥力
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let d2 = dx*dx + dy*dy;
+        if (d2 < 1) { dx = Math.random()-0.5; dy = Math.random()-0.5; d2 = dx*dx+dy*dy; }
+        const d = Math.sqrt(d2);
+        const f = rep / d2;
+        a.x += dx/d*f; a.y += dy/d*f; b.x -= dx/d*f; b.y -= dy/d*f;
+      }
+    }
+    // 弹簧
+    for (const l of links) {
+      const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
+      const d = Math.sqrt(dx*dx + dy*dy) || 1;
+      const f = (d - rest) * 0.04;
+      l.a.x += dx/d*f; l.a.y += dy/d*f; l.b.x -= dx/d*f; l.b.y -= dy/d*f;
+    }
+    // 中心引力
+    for (const n of nodes) { n.x += (W/2 - n.x)*0.05; n.y += (H/2 - n.y)*0.05; }
+  }
+  // 归一化到画布内并留边距
+  const pad = 60;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  nodes.forEach(n => { minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y); });
+  const sx = (W-2*pad)/Math.max(1,maxX-minX), sy = (H-2*pad)/Math.max(1,maxY-minY), s = Math.min(sx,sy);
+  nodes.forEach(n => { n.x = pad + (n.x-minX)*s; n.y = pad + (n.y-minY)*s; });
+}
+
+layout(nodes, edges, W, H);
+const svg = document.getElementById('g');
+const NS = 'http://www.w3.org/2000/svg';
+// 边
+for (const e of edges) {
+  const s = nodes.find(n => n.id === e.source), t = nodes.find(n => n.id === e.target);
+  if (!s || !t) continue;
+  const l = document.createElementNS(NS, 'line');
+  l.setAttribute('x1', s.x); l.setAttribute('y1', s.y);
+  l.setAttribute('x2', t.x); l.setAttribute('y2', t.y);
+  l.setAttribute('class', e.type.toLowerCase());
+  svg.appendChild(l);
+}
+// 节点 + 标签
+const COLORS = { person:'#4f6ef7', topic:'#e0a800', project:'#b455f5', task:'#1d9e75' };
+for (const n of nodes) {
+  const t = n.type.toLowerCase();
+  const isEntity = ['person','topic','project','task'].includes(t);
+  const r = isEntity ? 12 : 6;
+  const c = document.createElementNS(NS, 'circle');
+  c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', r);
+  c.setAttribute('fill', COLORS[t] || '#8a94a6');
+  svg.appendChild(c);
+  if (isEntity) {
+    const tx = document.createElementNS(NS, 'text');
+    tx.setAttribute('x', n.x); tx.setAttribute('y', n.y - r - 6);
+    tx.setAttribute('text-anchor', 'middle');
+    tx.textContent = n.label;
+    svg.appendChild(tx);
+  }
+}
+</script>
+</body>
+</html>
