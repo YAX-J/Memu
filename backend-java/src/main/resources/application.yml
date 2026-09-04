@@ -8,14 +8,27 @@ spring:
     default-property-inclusion: non_null
 
 memu:
+  data-dir: ./data
   kernel:
-    # Python AI 内核地址
+    # Python AI 内核
     base-url: http://127.0.0.1:8765
+    connect-timeout-ms: 3000
+    read-timeout-ms: 60000
+  suggest:
+    # SuggestionScheduler 轮询间隔（ms），默认 5 分钟
+    poll-interval-ms: 300000
+  integration:
+    # 集成同步轮询间隔（ms），默认 5 分钟
+    poll-interval-ms: 300000
+  calendar:
+    # 本地 ICS 日历文件路径；留空则禁用日历适配器
+    ics-path: ./data/calendar.ics
+  mail:
+    # 本地 .eml 邮件目录；留空则禁用邮件适配器
+    eml-dir: ./data/mail
   cors:
-    # 放行 Tauri 前端 dev server
-    origins:
-      - http://localhost:1420
-      - http://127.0.0.1:1420
+    # 放行 Tauri 前端 dev server（逗号分隔，@Value 无法绑 YAML 列表）
+    origins: http://localhost:1420,http://127.0.0.1:1420
 
 management:
   endpoints:
